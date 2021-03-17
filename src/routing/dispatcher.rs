@@ -92,14 +92,18 @@ impl Dispatcher {
 
     async fn try_handle_command(&self, command: Command) -> Result<Vec<Command>> {
         match command {
-            Command::HandleMessage { sender, message } => {
-                self.core.lock().await.handle_message(sender, message).await
-            }
-            Command::HandleSectionInfoMsg { sender, message } => Ok(self
+            Command::HandleMessage {
+                sender, message, ..
+            } => self.core.lock().await.handle_message(sender, message).await,
+            Command::HandleSectionInfoMsg {
+                sender,
+                message,
+                hdr_info,
+            } => Ok(self
                 .core
                 .lock()
                 .await
-                .handle_section_info_msg(sender, message)
+                .handle_section_info_msg(sender, message, hdr_info)
                 .await),
             Command::HandleTimeout(token) => self.core.lock().await.handle_timeout(token),
             Command::HandleAgreement { proposal, proof } => {
@@ -198,7 +202,7 @@ impl Dispatcher {
         let msg_bytes = message.serialize()?;
 
         let cmds = match message {
-            MessageType::Ping | MessageType::NodeMessage(_) => self
+            MessageType::Ping(_) | MessageType::NodeMessage { .. } => self
                 .comm
                 .send(recipients, delivery_group_size, msg_bytes)
                 .await
@@ -206,7 +210,7 @@ impl Dispatcher {
                 .into_iter()
                 .map(Command::HandlePeerLost)
                 .collect(),
-            MessageType::ClientMessage(_) => {
+            MessageType::ClientMessage { .. } => {
                 for recipient in recipients {
                     if self
                         .comm
@@ -219,7 +223,7 @@ impl Dispatcher {
                 }
                 vec![]
             }
-            MessageType::SectionInfo(_) => {
+            MessageType::SectionInfo { .. } => {
                 for recipient in recipients {
                     let _ = self
                         .comm
@@ -284,6 +288,7 @@ impl Dispatcher {
             .map(|(message, sender)| Command::HandleMessage {
                 message,
                 sender: Some(sender),
+                hdr_info: None,
             })
             .collect();
         Ok(commands)
