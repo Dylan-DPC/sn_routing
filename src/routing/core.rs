@@ -1902,41 +1902,9 @@ impl Core {
         proof: Proof,
     ) -> Result<Command> {
         let message = Message::section_src(message, proof, proof_chain)?;
-        let hdr_info = match message.dst() {
-            DstLocation::EndUser(end_user) => {
-                let pk = end_user.id();
-                let xorname = &XorName::from(*pk);
-                let (section_pk, _) = self.match_section(xorname).await;
-                if let Some(pk) = section_pk {
-                    Some(HeaderInfo {
-                        dest_section_pk: pk,
-                        dest: *xorname,
-                    })
-                } else {
-                    warn!("No section pk found matching name {:?}", xorname);
-                    None
-                }
-            }
-            DstLocation::Node(xorname) | DstLocation::Section(xorname) => {
-                let (section_pk, _) = self.match_section(&xorname).await;
-
-                if let Some(pk) = section_pk {
-                    Some(HeaderInfo {
-                        dest_section_pk: pk,
-                        dest: *xorname,
-                    })
-                } else {
-                    warn!("No section pk found matching name {:?}", xorname);
-                    None
-                }
-            }
-            // direct message...
-            DstLocation::Direct => None,
-        };
         Ok(Command::HandleMessage {
             message,
             sender: None,
-            hdr_info,
         })
     }
 
@@ -2367,26 +2335,9 @@ impl Core {
             .dst
             .contains(&self.node.name(), self.section.prefix())
         {
-            let hdr_info = match itinerary.dst.name() {
-                Some(name) => {
-                    let (section_pk, _) = self.match_section(&name).await;
-                    if let Some(pk) = section_pk {
-                        Some(HeaderInfo {
-                            dest_section_pk: pk,
-                            dest: name,
-                        })
-                    } else {
-                        warn!("No section pk found matching name {:?}", name);
-                        None
-                    }
-                }
-                // direct message...
-                None => None,
-            };
             commands.push(Command::HandleMessage {
                 sender: Some(self.node.addr),
                 message: msg.clone(),
-                hdr_info,
             });
         }
 
