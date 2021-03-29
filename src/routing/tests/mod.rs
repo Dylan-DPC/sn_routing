@@ -1541,7 +1541,6 @@ async fn handle_bounced_untrusted_sync() -> Result<()> {
 }
 
 #[tokio::test]
-#[ignore]
 async fn relocation_of_non_elder() -> Result<()> {
     relocation(RelocatedPeerRole::NonElder).await
 }
