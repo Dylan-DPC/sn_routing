@@ -44,7 +44,7 @@ use sn_messaging::{
     client::Message as ClientMessage,
     node::NodeMessage,
     section_info::{ErrorResponse, Message as SectionInfoMsg},
-    DstLocation, EndUser, HeaderInfo, Itinerary, MessageType, WireMsg,
+    DestInfo, DstLocation, EndUser, Itinerary, MessageType, WireMsg,
 };
 use std::{net::SocketAddr, sync::Arc};
 use tokio::{sync::mpsc, task};
@@ -418,7 +418,7 @@ impl Routing {
                 delivery_group_size: 1,
                 message: MessageType::ClientMessage {
                     msg: message,
-                    hdr_info: HeaderInfo {
+                    dest_info: DestInfo {
                         dest: XorName::from(end_user_pk),
                         dest_section_pk: section_pk,
                     },
@@ -499,11 +499,11 @@ async fn handle_message(dispatcher: Arc<Dispatcher>, bytes: Bytes, sender: Socke
         MessageType::Ping(_) => {
             // Pings are not handled
         }
-        MessageType::SectionInfo { msg, hdr_info } => {
+        MessageType::SectionInfo { msg, dest_info } => {
             let command = Command::HandleSectionInfoMsg {
                 sender,
                 message: msg,
-                hdr_info,
+                dest_info,
             };
             let _ = task::spawn(dispatcher.handle_commands(command));
         }
@@ -522,7 +522,14 @@ async fn handle_message(dispatcher: Arc<Dispatcher>, bytes: Bytes, sender: Socke
                 error!("Failed to deserialize node message: {}", error);
             }
         },
-        MessageType::ClientMessage { msg, hdr_info } => {
+        MessageType::NodeCmdMessage {
+            msg: _,
+            dest_info: _,
+            src_section_pk: _,
+        } => {
+            unimplemented!()
+        }
+        MessageType::ClientMessage { msg, dest_info } => {
             let end_user = dispatcher
                 .core
                 .lock()
@@ -546,7 +553,7 @@ async fn handle_message(dispatcher: Arc<Dispatcher>, bytes: Bytes, sender: Socke
                     //             sender, msg
                     //         )),
                     //     ),
-                    // hdr_info: HeaderInfo{
+                    // dest_info: DestInfo{
                     //     dest: "x",
                     //     dest_section_pk: "s"
                     // }
@@ -557,8 +564,8 @@ async fn handle_message(dispatcher: Arc<Dispatcher>, bytes: Bytes, sender: Socke
                 }
             };
 
-            let dest = hdr_info.dest;
-            let client_pk = hdr_info.dest_section_pk;
+            let dest = dest_info.dest;
+            let client_pk = dest_info.dest_section_pk;
             if let Err(error) = dispatcher.clone().check_key_status(&client_pk).await {
                 let correlation_id = msg.id();
                 let command = Command::SendMessage {
@@ -569,7 +576,7 @@ async fn handle_message(dispatcher: Arc<Dispatcher>, bytes: Bytes, sender: Socke
                             correlation_id,
                             error,
                         }),
-                        hdr_info: HeaderInfo {
+                        dest_info: DestInfo {
                             dest,
                             dest_section_pk: client_pk,
                         },

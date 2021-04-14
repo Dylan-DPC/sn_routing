@@ -98,12 +98,12 @@ impl Dispatcher {
             Command::HandleSectionInfoMsg {
                 sender,
                 message,
-                hdr_info,
+                dest_info,
             } => Ok(self
                 .core
                 .lock()
                 .await
-                .handle_section_info_msg(sender, message, hdr_info)
+                .handle_section_info_msg(sender, message, dest_info)
                 .await),
             Command::HandleTimeout(token) => self.core.lock().await.handle_timeout(token),
             Command::HandleAgreement { proposal, proof } => {
@@ -202,7 +202,9 @@ impl Dispatcher {
         message: MessageType,
     ) -> Result<Vec<Command>> {
         let cmds = match &message {
-            MessageType::Ping(_) | MessageType::NodeMessage { .. } => self
+            MessageType::Ping(_)
+            | MessageType::NodeMessage { .. }
+            | MessageType::NodeCmdMessage { .. } => self
                 .comm
                 .send(recipients, delivery_group_size, message)
                 .await

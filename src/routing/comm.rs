@@ -114,7 +114,7 @@ impl Comm {
         recipient: (SocketAddr, XorName),
         mut msg: MessageType,
     ) -> Result<(), Error> {
-        msg.update_header(None, Some(recipient.1));
+        msg.update_dest_info(None, Some(recipient.1));
         let bytes = msg.serialize()?;
         self.endpoint
             .send_message(bytes, &recipient.0)
@@ -174,7 +174,7 @@ impl Comm {
         // the next recipient and try to send to them. Proceed until the needed number of sends
         // succeeds or if there are no more recipients to pick.
         let send = |recipient: (SocketAddr, XorName), mut msg: MessageType| async move {
-            msg.update_header(None, Some(recipient.1));
+            msg.update_dest_info(None, Some(recipient.1));
             match msg.serialize() {
                 Ok(bytes) => {
                     trace!(
@@ -342,12 +342,12 @@ mod tests {
         .0?;
 
         if let Some(bytes) = peer0.rx.recv().await {
-            original_message.update_header(None, Some(peer0._name));
+            original_message.update_dest_info(None, Some(peer0._name));
             assert_eq!(WireMsg::deserialize(bytes)?, original_message.clone());
         }
 
         if let Some(bytes) = peer1.rx.recv().await {
-            original_message.update_header(None, Some(peer1._name));
+            original_message.update_dest_info(None, Some(peer1._name));
             assert_eq!(WireMsg::deserialize(bytes)?, original_message);
         }
 
@@ -372,7 +372,7 @@ mod tests {
         .0?;
 
         if let Some(bytes) = peer0.rx.recv().await {
-            original_message.update_header(None, Some(peer0._name));
+            original_message.update_dest_info(None, Some(peer0._name));
             assert_eq!(WireMsg::deserialize(bytes)?, original_message);
         }
 
@@ -431,7 +431,7 @@ mod tests {
         .0?;
 
         if let Some(bytes) = peer.rx.recv().await {
-            message.update_header(None, Some(peer._name));
+            message.update_dest_info(None, Some(peer._name));
             assert_eq!(WireMsg::deserialize(bytes)?, message);
         }
         Ok(())
@@ -463,7 +463,7 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(failed_recipients, [invalid_addr]);
         if let Some(bytes) = peer.rx.recv().await {
-            message.update_header(None, Some(peer._name));
+            message.update_dest_info(None, Some(peer._name));
             assert_eq!(WireMsg::deserialize(bytes)?, message);
         }
         Ok(())
