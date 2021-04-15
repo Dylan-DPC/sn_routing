@@ -202,9 +202,7 @@ impl Dispatcher {
         message: MessageType,
     ) -> Result<Vec<Command>> {
         let cmds = match &message {
-            MessageType::Ping(_)
-            | MessageType::NodeMessage { .. }
-            | MessageType::NodeCmdMessage { .. } => self
+            MessageType::Ping(_) | MessageType::Routing { .. } | MessageType::Node { .. } => self
                 .comm
                 .send(recipients, delivery_group_size, message)
                 .await
@@ -212,7 +210,7 @@ impl Dispatcher {
                 .into_iter()
                 .map(Command::HandlePeerLost)
                 .collect(),
-            MessageType::ClientMessage { .. } => {
+            MessageType::Client { .. } => {
                 for recipient in recipients {
                     if self
                         .comm

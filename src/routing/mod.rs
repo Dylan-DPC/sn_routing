@@ -41,8 +41,8 @@ use bytes::Bytes;
 use ed25519_dalek::{Keypair, PublicKey, Signature, Signer, KEYPAIR_LENGTH};
 use itertools::Itertools;
 use sn_messaging::{
-    client::Message as ClientMessage,
-    node::NodeMessage,
+    client::ClientMsg,
+    node::RoutingMsg,
     section_info::{ErrorResponse, Message as SectionInfoMsg},
     DestInfo, DstLocation, EndUser, Itinerary, MessageType, WireMsg,
 };
@@ -367,7 +367,7 @@ impl Routing {
 
             if let Some(socket_addr) = socket_addr {
                 return self
-                    .send_message_to_client(socket_addr, ClientMessage::from(content)?)
+                    .send_message_to_client(socket_addr, ClientMsg::from(content)?)
                     .await;
             } else {
                 debug!(
@@ -391,7 +391,7 @@ impl Routing {
     async fn send_message_to_client(
         &self,
         recipient: SocketAddr,
-        message: ClientMessage,
+        message: ClientMsg,
     ) -> Result<()> {
         let end_user = self
             .dispatcher
@@ -416,7 +416,7 @@ impl Routing {
             let command = Command::SendMessage {
                 recipients: vec![(recipient, user_xor_name)],
                 delivery_group_size: 1,
-                message: MessageType::ClientMessage {
+                message: MessageType::Client {
                     msg: message,
                     dest_info: DestInfo {
                         dest: XorName::from(end_user_pk),
@@ -507,8 +507,8 @@ async fn handle_message(dispatcher: Arc<Dispatcher>, bytes: Bytes, sender: Socke
             };
             let _ = task::spawn(dispatcher.handle_commands(command));
         }
-        MessageType::NodeMessage {
-            msg: NodeMessage(msg_bytes),
+        MessageType::Routing {
+            msg: RoutingMsg(msg_bytes),
             ..
         } => match Message::from_bytes(Bytes::from(msg_bytes)) {
             Ok(message) => {
@@ -522,14 +522,14 @@ async fn handle_message(dispatcher: Arc<Dispatcher>, bytes: Bytes, sender: Socke
                 error!("Failed to deserialize node message: {}", error);
             }
         },
-        MessageType::NodeCmdMessage {
+        MessageType::Node {
             msg: _,
             dest_info: _,
             src_section_pk: _,
         } => {
             unimplemented!()
         }
-        MessageType::ClientMessage { msg, dest_info } => {
+        MessageType::Client { msg, dest_info } => {
             let end_user = dispatcher
                 .core
                 .lock()
@@ -586,7 +586,7 @@ async fn handle_message(dispatcher: Arc<Dispatcher>, bytes: Bytes, sender: Socke
                 return;
             }
 
-            let event = Event::ClientMessageReceived {
+            let event = Event::ClientMsgReceived {
                 msg: Box::new(msg),
                 user: end_user,
             };
