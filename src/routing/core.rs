@@ -1832,7 +1832,7 @@ impl Core {
                     sync_message.to_bytes(),
                     DestInfo {
                         dest: XorName::random(),
-                        dest_section_pk: proof.public_key.clone(),
+                        dest_section_pk: proof.public_key,
                     },
                 ));
             }
