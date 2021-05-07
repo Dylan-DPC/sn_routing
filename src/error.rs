@@ -13,6 +13,7 @@ use crate::{
 };
 use std::net::SocketAddr;
 use thiserror::Error;
+use xor_name::XorName;
 
 /// The type returned by the sn_routing message handling methods.
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -27,20 +28,14 @@ pub enum Error {
     CannotRoute,
     #[error("Empty recipient list")]
     EmptyRecipientList,
-    #[error("The config is invalid")]
-    InvalidConfig,
-    #[error("Cannot connect to the endpoint")]
-    CannotConnectEndpoint,
-    #[error("Address not reachable")]
-    AddressNotReachable,
+    #[error("Invalid socket address: {0}")]
+    InvalidAddress(SocketAddr),
     #[error("Network layer error: {0}")]
     Network(#[from] qp2p::Error),
     #[error("The node is not in a state to handle the action.")]
     InvalidState,
-    #[error("Invalid source location.")]
-    InvalidSrcLocation,
-    #[error("Invalid destination location.")]
-    InvalidDstLocation,
+    #[error("invalid location: {0} of {1}")]
+    InvalidLocation(XorName, LocationType),
     #[error("Content of a received message is inconsistent.")]
     InvalidMessage,
     #[error("A signature share is invalid.")]
@@ -65,4 +60,11 @@ pub enum Error {
     InvalidPayload,
     #[error("Routing is set to not allow taking any new node")]
     TryJoinLater,
+}
+
+#[derive(Debug, Clone)]
+/// Indicates the type of the location. Used in error reporting.
+pub enum LocationType {
+    Source,
+    Destination
 }

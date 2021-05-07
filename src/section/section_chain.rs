@@ -434,8 +434,6 @@ pub enum Error {
     FailedSignature,
     #[error("key not found in the chain")]
     KeyNotFound,
-    #[error("chain doesn't contain any trusted keys")]
-    Untrusted,
     #[error("attempted operation is invalid")]
     InvalidOperation,
 }

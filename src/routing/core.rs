@@ -19,7 +19,7 @@ use crate::{
         Proposal, ProposalAggregator, ProposalError, Proven,
     },
     crypto, delivery_group,
-    error::{Error, Result},
+    error::{Error, Result, LocationType},
     event::{Elders, Event, NodeElderChange},
     message_filter::MessageFilter,
     messages::{
@@ -739,14 +739,14 @@ impl Core {
                     let signed_relocate = SignedRelocateDetails::new(msg)?;
                     Ok(self.handle_relocate(signed_relocate)?.into_iter().collect())
                 } else {
-                    Err(Error::InvalidSrcLocation)
+                    Err(Error::InvalidLocation(msg.src().name(), LocationType::Source))
                 }
             }
             Variant::RelocatePromise(promise) => {
                 self.handle_relocate_promise(*promise, msg.to_bytes())
             }
             Variant::JoinRequest(join_request) => {
-                let sender = sender.ok_or(Error::InvalidSrcLocation)?;
+                let sender = sender.ok_or(Error::InvalidAddress(sender))?;
                 self.handle_join_request(msg.src().peer(sender)?, *join_request.clone())
             }
             Variant::UserMessage(content) => self.handle_user_message(&msg, content.clone()),
@@ -2251,17 +2251,17 @@ impl Core {
                 "Not sending user message {:?} -> {:?}: we are not the source location",
                 itinerary.src, itinerary.dst
             );
-            return Err(Error::InvalidSrcLocation);
+            return Err(Error::InvalidLocation(itinerary.src_name(), LocationType::Source));
         }
         if matches!(itinerary.src, SrcLocation::EndUser(_)) {
-            return Err(Error::InvalidSrcLocation);
+            return Err(Error::InvalidLocation(itinerary.src_name(), LocationType::Source));
         }
         if matches!(itinerary.dst, DstLocation::Direct) {
             error!(
                 "Not sending user message {:?} -> {:?}: direct dst not supported",
                 itinerary.src, itinerary.dst
             );
-            return Err(Error::InvalidDstLocation);
+            return Err(Error::InvalidLocation(itinerary.dst_name().unwrap_or_default(), LocationType::Destination));
         }
 
         let variant = Variant::UserMessage(content);
